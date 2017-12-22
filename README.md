@@ -37,7 +37,7 @@ await db.TransactionAsync(() =>
       Course = "Computer Science"
   });
   
-  // Or you can use IEnumerable<T> as parameter
+  // You can also use IEnumerable<T> as parameter
   db.Insert<Student>(new List<Student>
   {
       new Student
