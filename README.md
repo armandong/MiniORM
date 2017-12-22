@@ -38,7 +38,7 @@ await db.TransactionAsync(() =>
   });
   
   // Or you can use IEnumerable<T> as parameter
-  db.Insert<Employee>(new List<Employee>
+  db.Insert<Student>(new List<Student>
   {
       new Student
       {
