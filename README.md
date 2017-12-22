@@ -1,7 +1,7 @@
 # MiniORM
 A lightweight ORM (object-relational mapper) for c#.net
 
-Basic Usage
+# Basic Usage
 
 ```c#
 public class Student
