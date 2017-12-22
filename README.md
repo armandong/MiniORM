@@ -13,7 +13,6 @@ public class Student
 }
 ```
 
-Implementation:
 ```c#
 ORM orm = new ORM();
 
