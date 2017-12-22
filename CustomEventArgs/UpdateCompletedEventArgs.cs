@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace MiniORM
 {
-    public class InsertCompletedEventArgs : EventArgs
+    public class UpdateCompletedEventArgs : EventArgs
     {
-        public IEnumerable<object> ResultList { get; set; }
         public bool Success { get; set; } = false;
         public string QueryString { get; set; }
     }

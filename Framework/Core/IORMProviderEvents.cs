@@ -8,6 +8,8 @@ namespace MiniORM
 {
     public interface IORMProviderEvents
     {
-
+        event EventHandler<InsertCompletedEventArgs> InsertCompleted;
+        event EventHandler<DeleteCompletedEventArgs> DeleteCompleted;
+        event EventHandler<UpdateCompletedEventArgs> UpdateCompleted;
     }
 }

@@ -38,6 +38,21 @@ namespace MiniORM
             add { _dbProvider.TransactionStarted += value; }
             remove { _dbProvider.TransactionStarted -= value; }
         }
+        public event EventHandler<InsertCompletedEventArgs> InsertCompleted
+        {
+            add { _ormProvider.InsertCompleted += value; }
+            remove { _ormProvider.InsertCompleted -= value; }
+        }
+        public event EventHandler<DeleteCompletedEventArgs> DeleteCompleted
+        {
+            add { _ormProvider.DeleteCompleted += value; }
+            remove { _ormProvider.DeleteCompleted -= value; }
+        }
+        public event EventHandler<UpdateCompletedEventArgs> UpdateCompleted
+        {
+            add { _ormProvider.UpdateCompleted += value; }
+            remove { _ormProvider.UpdateCompleted -= value; }
+        }
 
         public DatabaseFacade(IDbProvider dbProvider, IORMProvider ormProvider)
         {

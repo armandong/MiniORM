@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MiniORM
 {
-    public interface IORMProvider
+    public interface IORMProvider : IORMProviderEvents
     {
         Task<int?> InsertAsync<TEntity>(TEntity param) where TEntity : class, new();
         Task<int?> InsertAsync<TEntity>(IEnumerable<TEntity> param) where TEntity : class, new();

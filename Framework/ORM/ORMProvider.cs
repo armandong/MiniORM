@@ -11,6 +11,25 @@ namespace MiniORM
         private IDbProvider _dbProvider;
         private IQueryBuilder _queryBuilder;
 
+        public event EventHandler<InsertCompletedEventArgs> InsertCompleted;
+        public event EventHandler<DeleteCompletedEventArgs> DeleteCompleted;
+        public event EventHandler<UpdateCompletedEventArgs> UpdateCompleted;
+
+        public void OnInsertCompleted(IEnumerable<object> resultList, bool success, string queryString)
+        {
+            InsertCompleted?.Invoke(this, new InsertCompletedEventArgs { ResultList = resultList, Success = success, QueryString = queryString });
+        }
+
+        public void OnDeleteCompleted(bool success, string queryString)
+        {
+            DeleteCompleted?.Invoke(this, new DeleteCompletedEventArgs { Success = success, QueryString = queryString });
+        }
+
+        public void OnUpdateCompleted(bool success, string queryString)
+        {
+            UpdateCompleted?.Invoke(this, new UpdateCompletedEventArgs { Success = success, QueryString = queryString });
+        }
+
         public ORMProvider(IDbProvider dbProvider, IQueryBuilder queryBuilder)
         {
             _dbProvider = dbProvider;
@@ -31,6 +50,8 @@ namespace MiniORM
         {
             string query = _queryBuilder.CreateInsertStatement(param);
 
+            OnInsertCompleted(param, true, query);
+
             return _dbProvider.Execute(query);
         }
 
@@ -46,6 +67,8 @@ namespace MiniORM
         {
             string query = _queryBuilder.CreateInsertStatement(param);
 
+            OnInsertCompleted(param, true, query);
+
             return await _dbProvider.ExecuteAsync(query).ConfigureAwait(false);
         }
 
@@ -53,6 +76,8 @@ namespace MiniORM
           where TEntity : class, new()
         {
             string query = _queryBuilder.CreateUpdateStatement(param);
+
+            OnUpdateCompleted(true, query);
 
             return _dbProvider.Execute(query);
         }
@@ -62,6 +87,8 @@ namespace MiniORM
         {
             string query = _queryBuilder.CreateUpdateStatement(param);
 
+            OnUpdateCompleted(true, query);
+
             return await _dbProvider.ExecuteAsync(query).ConfigureAwait(false);
         }
 
@@ -70,6 +97,8 @@ namespace MiniORM
         {
             string query = _queryBuilder.CreateDeleteStatement(param);
 
+            OnDeleteCompleted(true, query);
+
             return _dbProvider.Execute(query);
         }
 
@@ -77,6 +106,8 @@ namespace MiniORM
            where TEntity : class, new()
         {
             string query = _queryBuilder.CreateDeleteStatement(param);
+
+            OnDeleteCompleted(true, query);
 
             return await _dbProvider.ExecuteAsync(query).ConfigureAwait(false);
         }

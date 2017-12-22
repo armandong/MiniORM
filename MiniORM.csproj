@@ -59,12 +59,17 @@
     <Compile Include="Attributes\TableAttribute.cs" />
     <Compile Include="CustomEventArgs\ConnectedEventArgs.cs" />
     <Compile Include="CustomEventArgs\ConnectionCreatedEventArgs.cs" />
+    <Compile Include="CustomEventArgs\DeleteCompletedEventArgs.cs" />
     <Compile Include="CustomEventArgs\ExecutedEventArgs.cs" />
     <Compile Include="CustomEventArgs\LoadDataCompletedEventArgs.cs" />
     <Compile Include="CustomEventArgs\TransactionStartedEventArgs.cs" />
+    <Compile Include="CustomEventArgs\UpdateCompletedEventArgs.cs" />
     <Compile Include="Enums\DbGenerateOption.cs" />
     <Compile Include="Enums\DbProviderType.cs" />
     <Compile Include="Enums\ExecuteType.cs" />
+    <Compile Include="Enums\MapperType.cs" />
+    <Compile Include="Enums\ORMProviderType.cs" />
+    <Compile Include="Enums\QueryBuilderType.cs" />
     <Compile Include="Extensions\MiniOrmHelpers.cs" />
     <Compile Include="Framework\Core\IDatabaseFacade.cs" />
     <Compile Include="Framework\Core\IDbProvider.cs" />

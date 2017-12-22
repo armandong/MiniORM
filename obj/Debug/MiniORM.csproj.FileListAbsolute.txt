@@ -1,0 +1,8 @@
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\bin\Debug\MiniORM.dll.config
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\bin\Debug\MiniORM.dll
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\bin\Debug\MiniORM.pdb
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\bin\Debug\MySql.Data.dll
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\bin\Debug\MySql.Data.xml
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\obj\Debug\MiniORM.csprojResolveAssemblyReference.cache
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\obj\Debug\MiniORM.dll
+C:\Users\Arman\Documents\Visual Studio 2017\Projects\DragableZ\MiniORM\obj\Debug\MiniORM.pdb
