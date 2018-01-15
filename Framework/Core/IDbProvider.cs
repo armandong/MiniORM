@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,7 +11,7 @@ namespace MiniORM
 {
     public interface IDbProvider : IDbProviderEvents
     {
-        IDbProvider CreateConnectionSql(Connection connection);
+        IDbProvider CreateConnectionSql(DbConnection connection);
         Task<bool> TestConnectionAsync(Action<object> callback = null);
 
         int? Execute(string query, object sqlParam = null, CommandType cmdType = CommandType.Text);

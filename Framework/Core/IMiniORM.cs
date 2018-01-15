@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace MiniORM
 {
-    public enum DbProviderType
+    public interface IMiniORM : IDbProvider, IORMProvider
     {
-        MySql = 0
+         IMiniORM CreateConnection(DbConnection connection);
     }
 }

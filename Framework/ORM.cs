@@ -1,6 +1,8 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,40 +11,24 @@ namespace MiniORM
 {
     public class ORM
     {
-        private IDatabaseFacade _databaseFacade;
+        private DbConnection _dbConnection;
 
-        private MapperType _mapperType = MapperType.DEFAULT;
-        private DbProviderType _dbProviderType = DbProviderType.MySql;
-        private QueryBuilderType _qbType = QueryBuilderType.DEFAULT;
-        private ORMProviderType _ormProviderType = ORMProviderType.DEFAULT;
+        private IMiniORM _databaseFacade;
 
-        public ORM()
+        private MapperType _mapperType;
+        private QueryBuilderType _qbType;
+        private ORMProviderType _ormProviderType;
+
+        public ORM(
+            DbConnection dbConnection,
+            MapperType mapperType = MapperType.DEFAULT, 
+            QueryBuilderType qbType = QueryBuilderType.DEFAULT,
+            ORMProviderType ormProviderType = ORMProviderType.DEFAULT)
         {
-
-        }
-
-        public ORM SetMapper(MapperType mapperType)
-        {
+            _dbConnection = dbConnection;
             _mapperType = mapperType;
-            return this;
-        }
-
-        public ORM SetDbProvider(DbProviderType dbProviderType)
-        {
-            _dbProviderType = dbProviderType;
-            return this;
-        }
-
-        public ORM SetQueryBuilder(QueryBuilderType qbType)
-        {
             _qbType = qbType;
-            return this;
-        }
-
-        public ORM SetORM(ORMProviderType ormProviderType)
-        {
             _ormProviderType = ormProviderType;
-            return this;
         }
 
         private void _Build()
@@ -55,21 +41,7 @@ namespace MiniORM
             if (_mapperType == MapperType.DEFAULT)
                 mapper = new EntityMapper();
 
-            if (_dbProviderType == DbProviderType.MySql)
-            {
-                dbProvider = new SqlService(mapper, (query, conn) =>
-                {
-                    MySqlConnection connection = conn as MySqlConnection;
-
-                    return new MySqlCommand(query, connection);
-                }, (connection) =>
-                {
-                    string _connectionString = string.Format("server={0};database={1};uid={2};password={3}",
-                    connection.Host, connection.Database, connection.User, connection.Password);
-
-                    return new MySqlConnection(_connectionString);
-                });
-            }
+            dbProvider = new SqlService(mapper);
 
             if (_qbType == QueryBuilderType.DEFAULT)
                 queryBuilder = new MainQueryBuilder(dbProvider, mapper);
@@ -80,10 +52,10 @@ namespace MiniORM
             _databaseFacade = new DatabaseFacade(dbProvider, ormProvider);
         }
 
-        public IDatabaseFacade CreateConnection(Connection connection)
+        public IMiniORM Build()
         {
             _Build();
-            return _databaseFacade.CreateConnection(connection);
+            return _databaseFacade.CreateConnection(_dbConnection);
         }
     }
 }

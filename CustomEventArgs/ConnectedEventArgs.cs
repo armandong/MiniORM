@@ -8,6 +8,6 @@ namespace MiniORM
 {
     public class ConnectedEventArgs : EventArgs
     {
-        public DbProviderType ProviderType { get; set; }
+        
     }
 }

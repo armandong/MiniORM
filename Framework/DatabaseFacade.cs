@@ -5,10 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
+using System.Data.Common;
 
 namespace MiniORM
 {
-    public class DatabaseFacade : IDatabaseFacade
+    public class DatabaseFacade : IMiniORM
     {
         private IDbProvider _dbProvider;
         private IORMProvider _ormProvider;
@@ -60,13 +61,13 @@ namespace MiniORM
             _ormProvider = ormProvider;
         }
 
-        public IDatabaseFacade CreateConnection(Connection connection)
+        public IMiniORM CreateConnection(DbConnection connection)
         {
             _dbProvider.CreateConnectionSql(connection);
             return this;
         }
 
-        public IDbProvider CreateConnectionSql(Connection connection)
+        public IDbProvider CreateConnectionSql(DbConnection connection)
         {
             _dbProvider.CreateConnectionSql(connection);
             return _dbProvider;

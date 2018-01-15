@@ -12,11 +12,8 @@ namespace MiniORM
     public class SqlService : IDbProvider
     {
         private DbConnection _con;
-        private Connection _connection;
         private bool _transactionIsActive = false;
         private IEntityMapper _mapper;
-        private Func<string, DbConnection, DbCommand> _commandHandler;
-        private Func<Connection, DbConnection> _connectionHandler;
 
         public event EventHandler<ConnectionCreatedEventArgs> ConnectionCreated;
         public event EventHandler<ConnectedEventArgs> Connected;
@@ -24,14 +21,14 @@ namespace MiniORM
         public event EventHandler<LoadDataCompletedEventArgs> LoadDataCompleted;
         public event EventHandler<TransactionStartedEventArgs> TransactionStarted;
 
-        public void OnConnectionCreated(Connection connection)
+        public void OnConnectionCreated()
         {
-            ConnectionCreated?.Invoke(this, new ConnectionCreatedEventArgs { ConnectionDetails = connection });
+            ConnectionCreated?.Invoke(this, new ConnectionCreatedEventArgs {  });
         }
 
         public void OnConnected()
         {
-            Connected?.Invoke(this, new ConnectedEventArgs { ProviderType = DbProviderType.MySql });
+            Connected?.Invoke(this, new ConnectedEventArgs { });
         }
 
         public void OnExecuted(bool success, object lastInsertedId, ExecuteType executeType)
@@ -49,24 +46,19 @@ namespace MiniORM
             TransactionStarted?.Invoke(this, new TransactionStartedEventArgs { });
         }
 
-        public SqlService(IEntityMapper mapper, Func<string, DbConnection, DbCommand> commandHandler, Func<Connection, DbConnection> connectionHandler)
+        public SqlService(IEntityMapper mapper)
         {
             _mapper = mapper;
-            _commandHandler = commandHandler;
-            _connectionHandler = connectionHandler;
         }
 
         #region PUBLIC
 
         #region SYNCHRONOUS METHODS
-        public IDbProvider CreateConnectionSql(Connection connection)
+        public IDbProvider CreateConnectionSql(DbConnection connection)
         {
-            _con = _connectionHandler(connection);
-            _connection = connection;
+            _con = connection;
 
-            OnConnectionCreated(connection);
-
-            Task.Run(() => TestConnectionAsync());
+            OnConnectionCreated();
 
             return this;
         }
@@ -75,9 +67,10 @@ namespace MiniORM
         {
             return _SqlTryCatch(con =>
             {
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
@@ -105,9 +98,10 @@ namespace MiniORM
             return _SqlTryCatch((con) =>
             {
                 List<TEntity> entityListTemp = new List<TEntity>();
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
@@ -138,9 +132,10 @@ namespace MiniORM
         {
             return _SqlTryCatch<object>((con) =>
             {
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
@@ -163,9 +158,10 @@ namespace MiniORM
         {
             return _SqlTryCatch((con) =>
             {
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(sqlParam);
@@ -180,18 +176,22 @@ namespace MiniORM
         #region ASYNCHRONOUS METHODS
         public async Task<bool> TestConnectionAsync(Action<object> callback = null)
         {
+            DbConnection con = _GetConnection();
+
             try
             {
-                using (DbConnection con = _GetConnection())
-                {
-                    await con.OpenAsync().ConfigureAwait(false);
-                    callback?.Invoke(null);
-                }
+                await con.OpenAsync().ConfigureAwait(false);
+                callback?.Invoke(null);
             }
             catch (Exception ex)
             {
                 callback?.Invoke(ex.Message);
                 return false;
+            }
+            finally
+            {
+                if (!_transactionIsActive)
+                    con.Close();
             }
 
             OnConnected();
@@ -202,16 +202,17 @@ namespace MiniORM
         {
             return await _SqlTryCatchAsync(async (con) =>
             {
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
 
                     await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                     ExecuteType executeType = MiniOrmHelpers.CheckExecuteType(query);
-
+                    
                     //int lastInsertId = Convert.ToInt32(cmd.LastInsertedId);
                     int lastInsertId = 0;
 
@@ -233,9 +234,10 @@ namespace MiniORM
             return await _SqlTryCatchAsync(async (con) =>
             {
                 List<TEntity> entityListTemp = new List<TEntity>();
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
@@ -265,9 +267,10 @@ namespace MiniORM
 
             return await _SqlTryCatchAsync(async (con) =>
             {
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
@@ -290,9 +293,10 @@ namespace MiniORM
         {
             return await _SqlTryCatchAsync(async (con) =>
             {
-                using (DbCommand cmd = _commandHandler(query, con))
+                using (DbCommand cmd = con.CreateCommand())
                 {
                     cmd.CommandType = cmdType;
+                    cmd.CommandText = query;
 
                     if (sqlParam != null)
                         cmd.Parameters.AddRange(sqlParam);
@@ -340,11 +344,6 @@ namespace MiniORM
         #region SYNCHRONOUS METHODS
         private DbConnection _GetConnection()
         {
-            if (_transactionIsActive == false)
-            {
-                _con = _connectionHandler(_connection);
-            }
-
             return _con;
         }
 
@@ -415,7 +414,7 @@ namespace MiniORM
         private async Task<TReturn> _SqlTryCatchAsync<TReturn>(Func<DbConnection, Task<TReturn>> func, Action<string> exceptionHandler = null)
         {
             DbConnection con = _GetConnection();
-
+            
             try
             {
                 if (!_transactionIsActive)

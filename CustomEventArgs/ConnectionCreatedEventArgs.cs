@@ -8,6 +8,6 @@ namespace MiniORM
 {
     public class ConnectionCreatedEventArgs : EventArgs
     {
-        public Connection ConnectionDetails { get; set; }
+        
     }
 }
