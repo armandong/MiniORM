@@ -14,7 +14,7 @@ public class Student
 ```
 
 ```c#
-// It has no specific database implementation. You can use any ADO .NET provider
+// It has no specific database implementation details. You can use any ADO.NET provider.
 MySqlConnection connection = new MySqlConnection("server=host_name;database=db_name;uid=root;password=");
 
 IMiniORM db = connection.MiniORM();
