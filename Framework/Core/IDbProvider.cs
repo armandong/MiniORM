@@ -10,7 +10,7 @@ namespace MiniORM
 {
     public interface IDbProvider : IDbProviderEvents
     {
-        IDbProvider CreateConnectionMySql(Connection connection);
+        IDbProvider CreateConnectionSql(Connection connection);
         Task<bool> TestConnectionAsync(Action<object> callback = null);
 
         int? Execute(string query, object sqlParam = null, CommandType cmdType = CommandType.Text);
@@ -21,9 +21,9 @@ namespace MiniORM
         Task<IEnumerable<TEntity>> LoadDataAsync<TEntity>(string query, dynamic sqlParam = null, Func<IDataReader, TEntity> drHandler = null, CommandType cmdType = CommandType.Text)
                             where TEntity : class, new();
 
-        object LoadSingleItem(string query, MySqlParameter[] sqlParam = null,
+        object LoadSingleItem(string query, dynamic sqlParam = null,
                                CommandType cmdType = CommandType.Text);
-        Task<object> LoadSingleItemAsync(string query, MySqlParameter[] sqlParam = null,
+        Task<object> LoadSingleItemAsync(string query, dynamic sqlParam = null,
                                  CommandType cmdType = CommandType.Text);
 
         object LoadDataReader(string query, dynamic sqlParam = null, Action<IDataReader> drHandler = null, CommandType cmdType = CommandType.Text);

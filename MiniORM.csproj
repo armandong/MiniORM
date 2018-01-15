@@ -81,7 +81,7 @@
     <Compile Include="CustomEventArgs\InsertCompletedEventArgs.cs" />
     <Compile Include="Framework\DatabaseFacade.cs" />
     <Compile Include="Framework\ORM.cs" />
-    <Compile Include="Framework\DbServices\MySqlService.cs" />
+    <Compile Include="Framework\DbServices\SqlService.cs" />
     <Compile Include="DTO\Connection.cs" />
     <Compile Include="Framework\Mapper\EntityMapper.cs" />
     <Compile Include="Framework\ORM\ORMProvider.cs" />

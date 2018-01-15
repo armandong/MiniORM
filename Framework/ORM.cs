@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MySql.Data.MySqlClient;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,7 +18,7 @@ namespace MiniORM
 
         public ORM()
         {
-           
+
         }
 
         public ORM SetMapper(MapperType mapperType)
@@ -55,7 +56,20 @@ namespace MiniORM
                 mapper = new EntityMapper();
 
             if (_dbProviderType == DbProviderType.MySql)
-                dbProvider = new MySqlService(mapper);
+            {
+                dbProvider = new SqlService(mapper, (query, conn) =>
+                {
+                    MySqlConnection connection = conn as MySqlConnection;
+
+                    return new MySqlCommand(query, connection);
+                }, (connection) =>
+                {
+                    string _connectionString = string.Format("server={0};database={1};uid={2};password={3}",
+                    connection.Host, connection.Database, connection.User, connection.Password);
+
+                    return new MySqlConnection(_connectionString);
+                });
+            }
 
             if (_qbType == QueryBuilderType.DEFAULT)
                 queryBuilder = new MainQueryBuilder(dbProvider, mapper);

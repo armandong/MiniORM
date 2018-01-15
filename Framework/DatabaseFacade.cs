@@ -62,13 +62,13 @@ namespace MiniORM
 
         public IDatabaseFacade CreateConnection(Connection connection)
         {
-            _dbProvider.CreateConnectionMySql(connection);
+            _dbProvider.CreateConnectionSql(connection);
             return this;
         }
 
-        public IDbProvider CreateConnectionMySql(Connection connection)
+        public IDbProvider CreateConnectionSql(Connection connection)
         {
-            _dbProvider.CreateConnectionMySql(connection);
+            _dbProvider.CreateConnectionSql(connection);
             return _dbProvider;
         }
 
@@ -122,12 +122,12 @@ namespace MiniORM
             return await _dbProvider.LoadDataReaderAsync<TEntity>(query, sqlParam, drHandler, cmdType);
         }
 
-        public object LoadSingleItem(string query, MySqlParameter[] sqlParam = null, CommandType cmdType = CommandType.Text)
+        public object LoadSingleItem(string query, dynamic sqlParam = null, CommandType cmdType = CommandType.Text)
         {
             return _dbProvider.LoadSingleItem(query, sqlParam, cmdType);
         }
 
-        public async Task<object> LoadSingleItemAsync(string query, MySqlParameter[] sqlParam = null, CommandType cmdType = CommandType.Text)
+        public async Task<object> LoadSingleItemAsync(string query, dynamic sqlParam = null, CommandType cmdType = CommandType.Text)
         {
             return await _dbProvider.LoadSingleItemAsync(query, sqlParam, cmdType);
         }

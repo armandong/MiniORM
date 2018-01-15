@@ -1,7 +1,7 @@
-﻿using MySql.Data.MySqlClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -9,12 +9,14 @@ using System.Threading.Tasks;
 
 namespace MiniORM
 {
-    public class MySqlService : IDbProvider
+    public class SqlService : IDbProvider
     {
-        private MySqlConnection _con;
-        private string _connectionString;
+        private DbConnection _con;
+        private Connection _connection;
         private bool _transactionIsActive = false;
         private IEntityMapper _mapper;
+        private Func<string, DbConnection, DbCommand> _commandHandler;
+        private Func<Connection, DbConnection> _connectionHandler;
 
         public event EventHandler<ConnectionCreatedEventArgs> ConnectionCreated;
         public event EventHandler<ConnectedEventArgs> Connected;
@@ -47,20 +49,20 @@ namespace MiniORM
             TransactionStarted?.Invoke(this, new TransactionStartedEventArgs { });
         }
 
-        public MySqlService(IEntityMapper mapper)
+        public SqlService(IEntityMapper mapper, Func<string, DbConnection, DbCommand> commandHandler, Func<Connection, DbConnection> connectionHandler)
         {
             _mapper = mapper;
+            _commandHandler = commandHandler;
+            _connectionHandler = connectionHandler;
         }
 
         #region PUBLIC
 
         #region SYNCHRONOUS METHODS
-        public IDbProvider CreateConnectionMySql(Connection connection)
+        public IDbProvider CreateConnectionSql(Connection connection)
         {
-            _connectionString = string.Format("server={0};database={1};uid={2};password={3}",
-                    connection.Host, connection.Database, connection.User, connection.Password);
-
-            _con = new MySqlConnection(_connectionString);
+            _con = _connectionHandler(connection);
+            _connection = connection;
 
             OnConnectionCreated(connection);
 
@@ -71,22 +73,21 @@ namespace MiniORM
 
         public int? Execute(string query, object sqlParam = null, CommandType cmdType = CommandType.Text)
         {
-            return _MySqlTryCatch(con =>
+            return _SqlTryCatch(con =>
             {
-                using (MySqlCommand cmd = new MySqlCommand())
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
-                        cmd.Parameters.AddRange(_SetParams(sqlParam));
+                        cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
 
                     cmd.ExecuteNonQueryAsync();
 
                     ExecuteType executeType = MiniOrmHelpers.CheckExecuteType(query);
 
-                    int lastInsertId = Convert.ToInt32(cmd.LastInsertedId);
+                    //int lastInsertId = Convert.ToInt32(cmd.LastInsertedId);
+                    int lastInsertId = 0;
                     OnExecuted(true, lastInsertId, executeType);
 
                     return lastInsertId;
@@ -101,17 +102,15 @@ namespace MiniORM
         public IEnumerable<TEntity> LoadData<TEntity>(string query, dynamic sqlParam = null, Func<IDataReader, TEntity> drHandler = null, CommandType cmdType = CommandType.Text)
             where TEntity : class, new()
         {
-            return _MySqlTryCatch((con) =>
+            return _SqlTryCatch((con) =>
             {
                 List<TEntity> entityListTemp = new List<TEntity>();
-                using (MySqlCommand cmd = new MySqlCommand(query, _GetConnection()))
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
-                        cmd.Parameters.AddRange(_SetParams(sqlParam));
+                        cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
 
                     using (IDataReader dr = cmd.ExecuteReader())
                     {
@@ -129,7 +128,7 @@ namespace MiniORM
 
                 OnLoadDataCompleted(entityListTemp, true);
                 return entityListTemp;
-            }, exceptionMessage => 
+            }, exceptionMessage =>
             {
                 OnLoadDataCompleted(null, false);
             });
@@ -137,16 +136,14 @@ namespace MiniORM
 
         public object LoadDataReader(string query, dynamic sqlParam = null, Action<IDataReader> drHandler = null, CommandType cmdType = CommandType.Text)
         {
-            return _MySqlTryCatch<object>((con) =>
+            return _SqlTryCatch<object>((con) =>
             {
-                using (MySqlCommand cmd = new MySqlCommand(query, _GetConnection()))
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
-                        cmd.Parameters.AddRange(_SetParams(sqlParam));
+                        cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
 
                     using (IDataReader dr = cmd.ExecuteReader())
                     {
@@ -161,15 +158,13 @@ namespace MiniORM
             });
         }
 
-        public object LoadSingleItem(string query, MySqlParameter[] sqlParam = null,
+        public object LoadSingleItem(string query, dynamic sqlParam = null,
                                 CommandType cmdType = CommandType.Text)
         {
-            return _MySqlTryCatch((con) =>
+            return _SqlTryCatch((con) =>
             {
-                using (MySqlCommand cmd = new MySqlCommand(query, _GetConnection()))
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
@@ -187,16 +182,11 @@ namespace MiniORM
         {
             try
             {
-                using (MySqlConnection con = _GetConnection())
+                using (DbConnection con = _GetConnection())
                 {
                     await con.OpenAsync().ConfigureAwait(false);
                     callback?.Invoke(null);
                 }
-            }
-            catch (MySqlException ex)
-            {
-                callback?.Invoke(ex.Message);
-                return false;
             }
             catch (Exception ex)
             {
@@ -210,26 +200,26 @@ namespace MiniORM
 
         public async Task<int?> ExecuteAsync(string query, object sqlParam = null, CommandType cmdType = CommandType.Text)
         {
-            return await _MySqlTryCatchAsync(async (con) =>
+            return await _SqlTryCatchAsync(async (con) =>
             {
-                using (MySqlCommand cmd = new MySqlCommand())
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
-                        cmd.Parameters.AddRange(_SetParams(sqlParam));
+                        cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
 
                     await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                     ExecuteType executeType = MiniOrmHelpers.CheckExecuteType(query);
 
-                    int lastInsertId = Convert.ToInt32(cmd.LastInsertedId);
+                    //int lastInsertId = Convert.ToInt32(cmd.LastInsertedId);
+                    int lastInsertId = 0;
+
                     OnExecuted(true, lastInsertId, executeType);
 
                     return lastInsertId;
                 }
-            }, error => 
+            }, error =>
             {
                 ExecuteType executeType = MiniOrmHelpers.CheckExecuteType(query);
                 OnExecuted(false, 0, executeType);
@@ -240,17 +230,15 @@ namespace MiniORM
             where TEntity : class, new()
         {
 
-            return await _MySqlTryCatchAsync(async (con) =>
+            return await _SqlTryCatchAsync(async (con) =>
             {
                 List<TEntity> entityListTemp = new List<TEntity>();
-                using (MySqlCommand cmd = new MySqlCommand(query, _GetConnection()))
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
-                        cmd.Parameters.AddRange(_SetParams(sqlParam));
+                        cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
 
                     using (IDataReader dr = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
                     {
@@ -275,16 +263,14 @@ namespace MiniORM
             where TEntity : class, new()
         {
 
-            return await _MySqlTryCatchAsync(async (con) =>
+            return await _SqlTryCatchAsync(async (con) =>
             {
-                using (MySqlCommand cmd = new MySqlCommand(query, _GetConnection()))
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
-                        cmd.Parameters.AddRange(_SetParams(sqlParam));
+                        cmd.Parameters.AddRange(_SetParams(sqlParam, cmd));
 
                     using (IDataReader dr = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
                     {
@@ -299,15 +285,13 @@ namespace MiniORM
             });
         }
 
-        public async Task<object> LoadSingleItemAsync(string query, MySqlParameter[] sqlParam = null,
+        public async Task<object> LoadSingleItemAsync(string query, dynamic sqlParam = null,
                                 CommandType cmdType = CommandType.Text)
         {
-            return await _MySqlTryCatchAsync(async (con) =>
+            return await _SqlTryCatchAsync(async (con) =>
             {
-                using (MySqlCommand cmd = new MySqlCommand(query, _GetConnection()))
+                using (DbCommand cmd = _commandHandler(query, con))
                 {
-                    cmd.Connection = con;
-                    cmd.CommandText = query;
                     cmd.CommandType = cmdType;
 
                     if (sqlParam != null)
@@ -320,13 +304,13 @@ namespace MiniORM
 
         public async Task<bool> TransactionAsync(Action action)
         {
-            MySqlTransaction trans = null;
+            DbTransaction trans = null;
             try
             {
-                using (MySqlConnection con = _GetConnection())
+                using (DbConnection con = _GetConnection())
                 {
                     await con.OpenAsync().ConfigureAwait(false);
-                    trans = await con.BeginTransactionAsync().ConfigureAwait(false);
+                    trans = con.BeginTransaction();
 
                     OnTransactionStarted();
 
@@ -340,11 +324,6 @@ namespace MiniORM
             }
             catch (Exception ex)
             {
-                if (ex is MySqlException)
-                {
-                    MySqlException mysqlException = ex as MySqlException;
-                }
-
                 trans.Rollback();
                 return false;
             }
@@ -359,19 +338,19 @@ namespace MiniORM
         #region PRIVATE
 
         #region SYNCHRONOUS METHODS
-        private MySqlConnection _GetConnection()
+        private DbConnection _GetConnection()
         {
             if (_transactionIsActive == false)
             {
-                _con = new MySqlConnection(_connectionString);
+                _con = _connectionHandler(_connection);
             }
 
             return _con;
         }
 
-        private TReturn _MySqlTryCatch<TReturn>(Func<MySqlConnection, TReturn> func, Action<string> exceptionHandler = null)
+        private TReturn _SqlTryCatch<TReturn>(Func<DbConnection, TReturn> func, Action<string> exceptionHandler = null)
         {
-            MySqlConnection con = _GetConnection();
+            DbConnection con = _GetConnection();
 
             try
             {
@@ -379,14 +358,6 @@ namespace MiniORM
                     con.Open();
 
                 return func(con);
-            }
-            catch (MySqlException ex)
-            {
-                if (_transactionIsActive)
-                    throw new Exception(ex.Message);
-
-                exceptionHandler(ex.Message);
-                return default(TReturn);
             }
             catch (Exception ex)
             {
@@ -401,45 +372,49 @@ namespace MiniORM
                     con.Close();
             }
         }
-        private MySqlParameter[] _SetParams(object param)
+        private DbParameter[] _SetParams(object param, DbCommand command)
         {
             PropertyInfo[] props = param.GetType().GetProperties() as PropertyInfo[];
-            List<MySqlParameter> sqlParams = new List<MySqlParameter>();
+            List<DbParameter> sqlParams = new List<DbParameter>();
 
             foreach (PropertyInfo prop in props)
             {
                 string propName = prop.Name;
-                sqlParams.Add(new MySqlParameter("@" + propName, prop.GetValue(param, null)));
+                DbParameter parameter = command.CreateParameter();
+                parameter.ParameterName = "@" + propName;
+                parameter.Value = prop.GetValue(param, null);
+
+                sqlParams.Add(parameter);
             }
 
             return sqlParams.ToArray();
         }
 
 
-        private MySqlParameter[] _SetParamsExecute(object param, string query = "")
-        {
-            if (!(param is Array))
-                return _SetParams(param);
+        //private DbParameterCollection[] _SetParamsExecute(object param, string query = "")
+        //{
+        //    if (!(param is Array))
+        //        return _SetParams(param);
 
-            List<MySqlParameter> sqlParams = new List<MySqlParameter>();
+        //    List<MySqlParameter> sqlParams = new List<MySqlParameter>();
 
-            foreach (dynamic item in (dynamic[])param)
-            {
-                foreach (PropertyInfo prop in item.GetType().GetProperties() as PropertyInfo[])
-                {
+        //    foreach (dynamic item in (dynamic[])param)
+        //    {
+        //        foreach (PropertyInfo prop in item.GetType().GetProperties() as PropertyInfo[])
+        //        {
 
-                }
-            }
+        //        }
+        //    }
 
-            throw new NotImplementedException();
-        }
+        //    throw new NotImplementedException();
+        //}
 
         #endregion
 
         #region ASYNCHRONOUS METHODS
-        private async Task<TReturn> _MySqlTryCatchAsync<TReturn>(Func<MySqlConnection, Task<TReturn>> func, Action<string> exceptionHandler = null)
+        private async Task<TReturn> _SqlTryCatchAsync<TReturn>(Func<DbConnection, Task<TReturn>> func, Action<string> exceptionHandler = null)
         {
-            MySqlConnection con = _GetConnection();
+            DbConnection con = _GetConnection();
 
             try
             {
@@ -447,13 +422,6 @@ namespace MiniORM
                     await con.OpenAsync().ConfigureAwait(false);
 
                 return await func(con);
-            }
-            catch (MySqlException ex)
-            {
-                if (_transactionIsActive)
-                    throw new Exception(ex.Message);
-                exceptionHandler(ex.Message);
-                return default(TReturn);
             }
             catch (Exception ex)
             {
@@ -465,7 +433,7 @@ namespace MiniORM
             finally
             {
                 if (!_transactionIsActive)
-                    await con.CloseAsync();
+                    con.Close();
             }
         }
 
@@ -473,6 +441,5 @@ namespace MiniORM
 
         #endregion
 
-       
     }
 }
