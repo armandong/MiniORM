@@ -14,15 +14,9 @@ public class Student
 ```
 
 ```c#
-ORM orm = new ORM();
+MySqlConnection connection = new MySqlConnection("server=host_name;database=db_name;uid=root;password=");
 
-IDatabaseFacade db = orm.CreateConnection(new Connection
-{
-    Host = "localhost",
-    User = "root",
-    Password = "",
-    Database = "db_name"
-});
+IMiniORM db = connection.MiniORM();
 
 // It automatically begin and commit/rollback the transaction
 await db.TransactionAsync(() =>
